@@ -9,12 +9,19 @@ package no.hvl.dat110.util;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 
 public class Hash { 
 	
-	private static BigInteger hashint; 
+	private static BigInteger hashint;
+
+	public static void main(String[] args) {
+		System.out.println(hashOf("process1"));
+		System.out.println(addressSize());
+	}
 	
 	public static BigInteger hashOf(String entity) {		
 		
@@ -29,7 +36,18 @@ public class Hash {
 		// convert the hex into BigInteger
 		
 		// return the BigInteger
+		byte[] Entity = entity.getBytes(StandardCharsets.UTF_8);
 		
+		try {
+			
+			MessageDigest md = MessageDigest.getInstance("MD5");
+			byte[] hashEntity = md.digest(Entity);
+			hashint = new BigInteger(toHex(hashEntity), 16);
+			
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		}
+
 		return hashint;
 	}
 	
@@ -44,8 +62,9 @@ public class Hash {
 		// compute the address size = 2 ^ number of bits
 		
 		// return the address size
+
 		
-		return null;
+		return BigInteger.valueOf(2).pow(bitSize());
 	}
 	
 	public static int bitSize() {
@@ -53,8 +72,16 @@ public class Hash {
 		int digestlen = 0;
 		
 		// find the digest length
+
+		MessageDigest md = null;
+		try {
+			md = MessageDigest.getInstance("MD5");
+
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		}
 		
-		return digestlen*8;
+		return md.getDigestLength()*8;
 	}
 	
 	public static String toHex(byte[] digest) {

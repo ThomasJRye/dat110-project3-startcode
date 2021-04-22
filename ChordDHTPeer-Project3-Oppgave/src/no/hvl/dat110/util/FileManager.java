@@ -24,11 +24,11 @@ import no.hvl.dat110.util.Hash;
 
 public class FileManager {
 	
-	private BigInteger[] replicafiles;							// array stores replicated files for distribution to matching nodes
-	private int numReplicas;									// let's assume each node manages nfiles (5 for now) - can be changed from the constructor
+	private BigInteger[] replicafiles;	// array stores replicated files for distribution to matching nodes
+	private int numReplicas;			// let's assume each node manages nfiles (5 for now) - can be changed from the constructor
 	private NodeInterface chordnode;
-	private String filepath; 									// absolute filepath
-	private String filename;									// only filename without path and extension
+	private String filepath; 			// absolute filepath
+	private String filename;			// only filename without path and extension
 	private BigInteger hash;
 	private byte[] bytesOfFile;
 	private String sizeOfByte;
@@ -64,34 +64,34 @@ public class FileManager {
 		
 		// store the hash in the replicafiles array.
 
+		for (int i = 0; i < Util.numReplicas; i++) {
+			String replica = filename + i;
+			replicafiles[i] = Hash.hashOf(replica);
+		}
 	}
 	
     /**
-     * 
-     * @param bytesOfFile
+     *
      * @throws RemoteException 
      */
     public int distributeReplicastoPeers() throws RemoteException {
-    	int counter = 0;
-    	
-    	// Task1: Given a filename, make replicas and distribute them to all active peers such that: pred < replica <= peer
-    	
-    	// Task2: assign a replica as the primary for this file. Hint, see the slide (project 3) on Canvas
-    	
-    	// create replicas of the filename
-    	
-		// iterate over the replicas
-    	
-    	// for each replica, find its successor by performing findSuccessor(replica)
-    	
-    	// call the addKey on the successor and add the replica
-    	
-    	// call the saveFileContent() on the successor
-    	
-    	// increment counter
-    	
-    		
-		return counter;
+    	createReplicaFiles();
+		Random number = new Random();
+    	int i = 0;
+
+		int n = number.nextInt(Util.numReplicas - 1);
+
+		for (BigInteger replica: replicafiles) {
+			NodeInterface successor = chordnode.findSuccessor(replica);
+				successor.addKey(replica);
+				if (i == n) {
+					successor.saveFileContent(filename, replica, bytesOfFile, true);
+				} else {
+					successor.saveFileContent(filename, replica, bytesOfFile, false);
+				}
+				i++;
+		}
+		return i;
     }
 	
 	/**
@@ -103,22 +103,17 @@ public class FileManager {
 	public Set<Message> requestActiveNodesForFile(String filename) throws RemoteException {
 		
 		this.filename = filename;
-		Set<Message> succinfo = new HashSet<Message>();
-		// Task: Given a filename, find all the peers that hold a copy of this file
+		Set<Message> sucessorHash = new HashSet<Message>();
+
+		createReplicaFiles();
+		for (BigInteger replica: replicafiles) {
+			NodeInterface successor = chordnode.findSuccessor(replica);
+			Message message = successor.getFilesMetadata(replica);
+			sucessorHash.add(message);
+		}
 		
-		// generate the N replicas from the filename by calling createReplicaFiles()
-		
-		// it means, iterate over the replicas of the file
-		
-		// for each replica, do findSuccessor(replica) that returns successor s.
-		
-		// get the metadata (Message) of the replica from the successor, s (i.e. active peer) of the file
-		
-		// save the metadata in the set succinfo.
-		
-		this.activeNodesforFile = succinfo;
-		
-		return succinfo;
+		this.activeNodesforFile = sucessorHash;
+		return sucessorHash;
 	}
 	
 	/**
@@ -136,10 +131,19 @@ public class FileManager {
 		// use the primaryServer boolean variable contained in the Message class to check if it is the primary or not
 		
 		// return the primary
-		
-		return null; 
+
+		for (Message message: activeNodesforFile) {
+			if (message.isPrimaryServer()) {
+				try {
+					return chordnode.findSuccessor(message.getNodeID()).getPredecessor();
+				} catch (RemoteException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return null;
 	}
-	
+
     /**
      * Read the content of a file and return the bytes
      * @throws IOException 
@@ -233,7 +237,7 @@ public class FileManager {
 		return sizeOfByte;
 	}
 	/**
-	 * @param size the size to set
+	 * @param sizeOfByte the size to set
 	 */
 	public void setSizeOfByte(String sizeOfByte) {
 		this.sizeOfByte = sizeOfByte;
